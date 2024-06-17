@@ -39,16 +39,30 @@
 <body>
 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
     <h1>Detecção de objetos com YOLOv8</h1>
-    <input id="uploadInput" type="file"/>
+    <div style="display: flex; flex-direction: row">
+        <div style="display: flex; flex-direction: column">
+            <div style="display: flex; justify-content: space-between; width: 460px">
+                <label for="uploadInput">
+                    Selecione uma imagem local:
+                </label>
+                <input id="uploadInput" type="file"/>
+            </div>
+            <div style="margin-top: 20px; display: flex; justify-content: space-between">
+                <label for="image_dropdown">
+                    Ou selecione uma imagem de exemplo:
+                </label>
+                <select id="image_dropdown">
+                    <option value="none">Selecione uma opção:</option>
+                </select>
+            </div>
+        </div>
+    </div>
     <div id="loading"></div>
     <p id="loadingMessage"></p>
     <canvas id="canvas"></canvas>
 </div>
 <script>
 
-    /**
-     * Spinner while the model is running
-     */
     const loadingMessage = document.getElementById("loadingMessage");
     loading = document.getElementById("loading");
     canvas = document.getElementById("canvas");
@@ -64,17 +78,46 @@
         loading.style.display = "none";
         canvas.style.display = "block";
     }
+
     /**
-     * Global variable used to store the YOLOv8 neural network model
-     * Load the model on page load
+     * Setup of model and dropdown with example images
      */
+    const dropdown = document.getElementById('image_dropdown');
     let model;
 
-    window.onload = async () => {
+    const fillDropdown = () => {
+        const dropdown = document.getElementById('image_dropdown');
+        for (let i = 1; i <= 10; i++) {
+            const option = document.createElement('option');
+            option.value = `./images/image_${i}.jpg`;
+            option.text = `Opção ${i}`;
+            dropdown.add(option);
+        }
+    }
+
+    const loadModel = async () => {
         initLoading("Carregando o modelo...");
         model = await ort.InferenceSession.create("best.onnx");
         stopLoading();
     }
+
+    window.onload = async () => {
+        fillDropdown();
+
+        await loadModel();
+    }
+
+    /**
+     * "Dropdown" with example images onChange handler: loads selected image
+     * and passes it through YOLOv8 neural network
+     */
+    dropdown.addEventListener("change", async (event) => {
+        const response = await fetch(event.target.value);
+        const blob = await response.blob();
+        const boxes = await detect_objects_on_image(blob);
+        draw_image_and_boxes(blob, boxes);
+    })
+
 
     /**
      * "Upload" button onClick handler: uploads selected image file
